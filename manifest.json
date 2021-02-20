@@ -1,0 +1,17 @@
+{
+  "name": "Tab Freezer",
+  "description": "Save laptop battery and increase performance by freezing tabs.",
+  "version": "1.0",
+  "manifest_version": 2,
+  "permissions": ["tabs"],
+  "browser_action": {
+    "default_title": "Tab Freezer",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "snow-outline-16.png",
+    "32": "snow-outline-32.png",
+    "48": "snow-outline-48.png",
+    "128": "snow-outline-128.png"
+  }
+}
