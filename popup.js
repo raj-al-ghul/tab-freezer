@@ -1,8 +1,12 @@
 "use strict";
 
 /**
- * TODO
- * - Re-render list after discarding tabs to update count
+ * FYI
+ *
+ * - UI is automatically re-rendered on browser action icon click
+ *   (Does not persist in between open/close states)
+ *
+ *   So, if an action closes the UI, on next icon clock, render() will be called
  */
 
 (function () {
@@ -20,6 +24,8 @@
         windows.forEach((w) =>
           w.tabs.forEach((t) => chrome.tabs.discard(t.id))
         );
+
+        // render() not needed; discarding all tabs closes extension UI
       };
 
       outerDiv.appendChild(warning);
@@ -51,6 +57,9 @@
           w.tabs.forEach((t) =>
             chrome.tabs.discard(t.id, (tabOrUndefined) => {})
           );
+
+          // if current window, discarding current tab will also close extension UI
+          if (!w.focused) render();
         };
 
         summary.appendChild(titleDiv);
@@ -77,7 +86,10 @@
         outerDiv.appendChild(details);
       });
 
-      document.getElementById("app").appendChild(outerDiv);
+      const appRoot = document.getElementById("app");
+      // we call render() to update UI, so clear root content on every render
+      appRoot.innerHTML = "";
+      appRoot.appendChild(outerDiv);
     });
   }
 
