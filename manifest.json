@@ -1,7 +1,7 @@
 {
   "name": "Tab Freezer",
   "description": "Save laptop battery and increase performance by freezing tabs.",
-  "version": "1.0",
+  "version": "1.1",
   "manifest_version": 2,
   "permissions": ["tabs"],
   "browser_action": {
