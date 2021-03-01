@@ -12,7 +12,7 @@ _A simple, open source, non-minified extension to easily discard chrome tabs to 
 
 With Chrome Extensions being susceptible to take overs and becoming malware, I wanted to make sure that the code was always easy to read and audit.
 
-The code is **not minified/uglified** and the **JavaScript code is under 100 lines of code** with comments. Right click the extension icon in toolbar, click inspect, and you can easily read the code _actually_ deployed and running in your browser, not just on Github.
+The code is **not minified/uglified** and the **JavaScript code is ~100 lines of code** _with_ comments. Right click the extension icon in toolbar, click inspect, and you can easily read the code _actually_ deployed and running in your browser, not just on Github.
 
 It only requires `tabs` permission from Chrome, to be able to list windows and tabs in the UI and **use Chrome's built-in discard functionality**.
 

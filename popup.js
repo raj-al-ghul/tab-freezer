@@ -62,8 +62,13 @@
           if (!w.focused) render();
         };
 
+        const firstTabTitle = document.createElement("div");
+        firstTabTitle.textContent = w.tabs[0].title;
+        firstTabTitle.className = "first-tab-title";
+
         summary.appendChild(titleDiv);
         summary.appendChild(discardAllButton);
+        summary.appendChild(firstTabTitle);
 
         /**
          * Tabs in each window
