@@ -2,12 +2,6 @@
 
 /**
  * TODO
- *
- * - show number of tabs per window that have been discarded
- *    e.g.
- *    - Window (0/15 tabs discarded)
- *    - Window (13/15 tabs loaded)
- *
  * - Re-render list after discarding tabs to update count
  */
 
@@ -37,8 +31,10 @@
        */
       const summary = document.createElement("summary");
 
+      const discardedTabs = w.tabs.filter((t) => t.discarded).length;
+
       let titleDiv;
-      const titleText = `Window (${w.tabs.length} tabs)`;
+      const titleText = `Window (${discardedTabs}/${w.tabs.length} frozen tabs)`;
       if (w.focused) {
         titleDiv = document.createElement("MARK");
         titleDiv.innerText = titleText;
