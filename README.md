@@ -2,7 +2,7 @@ Do you keep a lot of Chrome tabs open? Does your laptop sound like jet engine? D
 
 Use **Tab Freezer** to freeze tabs so they do not consume memory or cpu, **enabling longer battery life** and **better performance**. You get to **keep all your window and tab organizations as is**, not having to manage bookmarks or links, and can easily get back to paused work.
 
-<INCLUDE GIF HERE>
+![screenshot](https://user-images.githubusercontent.com/2523386/109467769-8a22a300-7a20-11eb-9ac6-6cfc28cefa1f.png)
 
 # Tab Freezer
 
