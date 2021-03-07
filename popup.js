@@ -11,6 +11,8 @@
 
 (function () {
   function render() {
+  /**  when calling render() again, window.focused is false for all, cache window where user opened popup */
+  let cachedFocusedWindowId = undefined;
     chrome.windows.getAll({ populate: true }, (windows) => {
       const outerDiv = document.createElement("div");
 
@@ -44,9 +46,10 @@
 
         let titleDiv;
         const titleText = `Window (${discardedTabs}/${w.tabs.length} frozen tabs)`;
-        if (w.focused) {
+        if (w.focused || cachedFocusedWindowId === w.id) {
           titleDiv = document.createElement("MARK");
           titleDiv.innerText = titleText;
+          cachedFocusedWindowId = w.id;
         } else {
           titleDiv = document.createTextNode(titleText);
         }
