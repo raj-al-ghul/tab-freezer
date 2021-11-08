@@ -18,7 +18,7 @@
 
 (function () {
   /**  when calling render() again, window.focused is false for all, cache window where user opened popup */
-  let cachedFocusedWindowId = undefined;
+  let cachedFocusedWindowId: number = undefined;
 
   const render = async () => {
     chrome.windows.getAll({ populate: true }, (windows) => {
@@ -78,30 +78,30 @@
          * https://developer.chrome.com/docs/extensions/reference/processes/
          * enable
          */
-        if (chrome.processes) {
-          const windowTabProcesses = [];
-          for (let i = 0; i < w.tabs.length; i += 1) {
-            const t = w.tabs[i];
+        // if (chrome.processes) {
+        //   const windowTabProcesses = [];
+        //   for (let i = 0; i < w.tabs.length; i += 1) {
+        //     const t = w.tabs[i];
 
-            await new Promise((resolve) => {
-              chrome.processes.getProcessIdForTab(t.id, (processId) => {
-                windowTabProcesses.push(processId);
-                resolve();
-              });
-            });
-          }
+        //     await new Promise((resolve) => {
+        //       chrome.processes.getProcessIdForTab(t.id, (processId) => {
+        //         windowTabProcesses.push(processId);
+        //         resolve();
+        //       });
+        //     });
+        //   }
 
-          await new Promise((resolve) => {
-            chrome.processes.getProcessInfo(
-              windowTabProcesses,
-              true,
-              (processes) => {
-                console.log(processes);
-                resolve();
-              }
-            );
-          });
-        }
+        //   await new Promise((resolve) => {
+        //     chrome.processes.getProcessInfo(
+        //       windowTabProcesses,
+        //       true,
+        //       (processes) => {
+        //         console.log(processes);
+        //         resolve();
+        //       }
+        //     );
+        //   });
+        // }
 
         const firstTabTitle = document.createElement("div");
         firstTabTitle.textContent = w.tabs[0].title;
@@ -142,38 +142,33 @@
   render();
 })();
 
-/**
- *
- * @param {number} tabId
- * @returns {Promise<Object>} tab {"collapsed":true,"color":"yellow","id":374577410,"title":"Resume","windowId":363}
- */
-const tabGroupsGet = async (tabId) =>
-  await new Promise((resolve) => {
+const tabGroupsGet = async (tabId: number) =>
+  await new Promise<chrome.tabGroups.TabGroup>((resolve) => {
     chrome.tabGroups.get(tabId, (v) => resolve(v));
   });
 
 const getAllWindows = async () =>
-  await new Promise((resolve) => {
+  await new Promise<chrome.windows.Window[]>((resolve) => {
     chrome.windows.getAll({ populate: true }, (windows) => {
       resolve(windows);
     });
   });
 
-const getConfig = () =>
+const getConfig = (): ConfigI[] =>
   JSON.parse(localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS")) ?? [];
 
-const updateConfig = (config) => {
+const updateConfig = (config: ConfigI) => {
   localStorage.setItem(
     "TAB_FREEZER__SAVED_SESSIONS",
     JSON.stringify([...getConfig(), config])
   );
 };
 
-const saveConfig = (config) => {
+const saveConfig = (config: ConfigI[]) => {
   localStorage.setItem("TAB_FREEZER__SAVED_SESSIONS", JSON.stringify(config));
 };
 
-const createButton = (text, cb) => {
+const createButton = (text: string, cb: () => void) => {
   const btn = document.createElement("BUTTON");
   btn.textContent = text;
   btn.onclick = () => {
@@ -186,12 +181,16 @@ const createButton = (text, cb) => {
 (function () {
   const renderSaveSession = async () => {
     const windows = await getAllWindows();
-    const CONFIG = { timestamp: Date.now(), windows: [] };
+    const CONFIG: ConfigI = { timestamp: Date.now(), windows: [] };
 
     for (let WINDOWS_I = 0; WINDOWS_I < windows.length; WINDOWS_I += 1) {
       const w = windows[WINDOWS_I];
 
-      const WINDOW_CONFIG = { tabGroups: {}, pinnedTabIndices: [], tabs: [] };
+      const WINDOW_CONFIG: WindowConfigI = {
+        tabGroups: {},
+        pinnedTabIndices: [],
+        tabs: [],
+      };
       CONFIG.windows.push(WINDOW_CONFIG);
 
       for (let TAB_i = 0; TAB_i < w.tabs.length; TAB_i += 1) {
@@ -230,7 +229,7 @@ const createButton = (text, cb) => {
 
   renderSaveSession();
 
-  const openWindows = (windows) => {
+  const openWindows = (windows: WindowConfigI[]) => {
     for (let WINDOWS_I = 0; WINDOWS_I < windows.length; WINDOWS_I += 1) {
       const windowConfig = windows[WINDOWS_I];
 

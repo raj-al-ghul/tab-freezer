@@ -4,6 +4,7 @@
     "target": "es2020",
     "module": "commonjs",
     "outDir": "dist",
-    "allowJs": true
+    "allowJs": true,
+    "noImplicitAny": true
   }
 }
