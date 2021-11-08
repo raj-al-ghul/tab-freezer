@@ -74,6 +74,8 @@
         };
 
         /**
+         * TODO see performance summary of all windows/tabs
+         * https://developer.chrome.com/docs/extensions/reference/processes/
          * enable
          */
         if (chrome.processes) {
@@ -138,4 +140,164 @@
   };
 
   render();
+})();
+
+/**
+ *
+ * @param {number} tabId
+ * @returns {Promise<Object>} tab {"collapsed":true,"color":"yellow","id":374577410,"title":"Resume","windowId":363}
+ */
+const tabGroupsGet = async (tabId) =>
+  await new Promise((resolve) => {
+    chrome.tabGroups.get(tabId, (v) => resolve(v));
+  });
+
+const getAllWindows = async () =>
+  await new Promise((resolve) => {
+    chrome.windows.getAll({ populate: true }, (windows) => {
+      resolve(windows);
+    });
+  });
+
+const getConfig = () =>
+  JSON.parse(localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS")) ?? [];
+
+const updateConfig = (config) => {
+  localStorage.setItem(
+    "TAB_FREEZER__SAVED_SESSIONS",
+    JSON.stringify([...getConfig(), config])
+  );
+};
+
+const saveConfig = (config) => {
+  localStorage.setItem("TAB_FREEZER__SAVED_SESSIONS", JSON.stringify(config));
+};
+
+const createButton = (text, cb) => {
+  const btn = document.createElement("BUTTON");
+  btn.textContent = text;
+  btn.onclick = () => {
+    cb();
+  };
+
+  return btn;
+};
+
+(function () {
+  const renderSaveSession = async () => {
+    const windows = await getAllWindows();
+    const CONFIG = { timestamp: Date.now(), windows: [] };
+
+    for (let WINDOWS_I = 0; WINDOWS_I < windows.length; WINDOWS_I += 1) {
+      const w = windows[WINDOWS_I];
+
+      const WINDOW_CONFIG = { tabGroups: {}, pinnedTabIndices: [], tabs: [] };
+      CONFIG.windows.push(WINDOW_CONFIG);
+
+      for (let TAB_i = 0; TAB_i < w.tabs.length; TAB_i += 1) {
+        const tab = w.tabs[TAB_i];
+
+        WINDOW_CONFIG.tabs.push(tab);
+
+        if (tab.pinned) WINDOW_CONFIG.pinnedTabIndices.push(TAB_i);
+
+        if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+          if (WINDOW_CONFIG.tabGroups[tab.groupId]) {
+            WINDOW_CONFIG.tabGroups[tab.groupId].tabIdxs.push(TAB_i);
+          } else {
+            const tabGroupInfo = await tabGroupsGet(tab.groupId);
+            WINDOW_CONFIG.tabGroups[tab.groupId] = {
+              ...tabGroupInfo,
+              tabIdxs: [TAB_i],
+            };
+          }
+        }
+      }
+    }
+
+    const saveBtn = document.createElement("BUTTON");
+    saveBtn.textContent = `Save Session (${CONFIG.windows.length} windows)`;
+    saveBtn.onclick = () => {
+      CONFIG.timestamp = Date.now();
+      updateConfig(CONFIG);
+      renderSessions();
+    };
+
+    const appRoot = document.getElementById("save");
+    appRoot.innerHTML = "";
+    appRoot.appendChild(saveBtn);
+  };
+
+  renderSaveSession();
+
+  const openWindows = (windows) => {
+    for (let WINDOWS_I = 0; WINDOWS_I < windows.length; WINDOWS_I += 1) {
+      const windowConfig = windows[WINDOWS_I];
+
+      const urls = windowConfig.tabs.map((t) => t.url);
+      chrome.windows.create({ url: urls }, (createdWindow) => {
+        Object.values(windowConfig.tabGroups).forEach((tabGroup) => {
+          const tabIds = tabGroup.tabIdxs.map(
+            (idx) => createdWindow.tabs[idx].id
+          );
+
+          chrome.tabs.group(
+            { tabIds, createProperties: { windowId: createdWindow.id } },
+            (tabGroupId) => {
+              chrome.tabGroups.update(tabGroupId, {
+                color: tabGroup.color,
+                collapsed: tabGroup.collapsed,
+                title: tabGroup.title,
+              });
+            }
+          );
+        });
+
+        windowConfig.pinnedTabIndices
+          .map((idx) => createdWindow.tabs[idx].id)
+          .forEach((pinnedTabId) => {
+            chrome.tabs.update(pinnedTabId, { pinned: true });
+          });
+      });
+    }
+  };
+
+  const renderSessions = async () => {
+    const sessions = getConfig();
+
+    const sessionDiv = document.createElement("DIV");
+    sessions.forEach((sesh) => {
+      const totalTabs = sesh.windows.reduce((p, c) => p + c.tabs.length, 0);
+      const totalWindows = sesh.windows.length;
+
+      const seshDiv = document.createElement("DIV");
+      seshDiv.className = "session-div";
+      seshDiv.innerText = `${totalWindows} windows, ${totalTabs} tabs - ${new Date(
+        sesh.timestamp
+      ).toLocaleDateString()} - ${new Date(
+        sesh.timestamp
+      ).toLocaleTimeString()}`;
+
+      seshDiv.appendChild(
+        createButton("Open", () => {
+          openWindows(sesh.windows);
+        })
+      );
+
+      seshDiv.appendChild(
+        createButton("Delete", () => {
+          const newS = sessions.filter((s) => s !== sesh);
+          saveConfig(newS);
+          renderSessions();
+        })
+      );
+      sessionDiv.appendChild(seshDiv);
+    });
+
+    const appRoot = document.getElementById("sessions");
+    appRoot.innerHTML = "";
+    appRoot.appendChild(sessionDiv);
+  };
+
+  renderSessions();
 })();
