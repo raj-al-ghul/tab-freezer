@@ -9,10 +9,18 @@
  *   So, if an action closes the UI, on next icon clock, render() will be called
  */
 
+/**
+ * https://developer.chrome.com/docs/extensions/reference/processes/#method-getProcessIdForTab
+ * https://developer.chrome.com/docs/extensions/reference/processes/#type-Process
+ * https://groups.google.com/a/chromium.org/g/chromium-extensions/c/pyAzuN4neHc
+ * https://bugs.chromium.org/p/chromium/issues/detail?id=763960
+ */
+
 (function () {
-  function render() {
   /**  when calling render() again, window.focused is false for all, cache window where user opened popup */
   let cachedFocusedWindowId = undefined;
+
+  const render = async () => {
     chrome.windows.getAll({ populate: true }, (windows) => {
       const outerDiv = document.createElement("div");
 
@@ -33,7 +41,7 @@
       outerDiv.appendChild(warning);
       outerDiv.appendChild(discardAllWindows);
 
-      windows.forEach((w) => {
+      windows.forEach(async (w) => {
         /**
          * The Summary of the div
          * e.g.
@@ -64,6 +72,34 @@
           // if current window, discarding current tab will also close extension UI
           if (!w.focused) render();
         };
+
+        /**
+         * enable
+         */
+        if (chrome.processes) {
+          const windowTabProcesses = [];
+          for (let i = 0; i < w.tabs.length; i += 1) {
+            const t = w.tabs[i];
+
+            await new Promise((resolve) => {
+              chrome.processes.getProcessIdForTab(t.id, (processId) => {
+                windowTabProcesses.push(processId);
+                resolve();
+              });
+            });
+          }
+
+          await new Promise((resolve) => {
+            chrome.processes.getProcessInfo(
+              windowTabProcesses,
+              true,
+              (processes) => {
+                console.log(processes);
+                resolve();
+              }
+            );
+          });
+        }
 
         const firstTabTitle = document.createElement("div");
         firstTabTitle.textContent = w.tabs[0].title;
@@ -99,7 +135,7 @@
       appRoot.innerHTML = "";
       appRoot.appendChild(outerDiv);
     });
-  }
+  };
 
   render();
 })();
