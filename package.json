@@ -1,0 +1,22 @@
+{
+  "name": "tab-freezer",
+  "version": "1.0.0",
+  "description": "Do you keep a lot of Chrome tabs open? Does your laptop sound like jet engine? Does it get hot enough to jeopardize your chances of having kids? Does your battery percentage reduce in front of your very eyes?",
+  "scripts": {
+    "start": "tsc --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raj-al-ghul/tab-freezer.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/raj-al-ghul/tab-freezer/issues"
+  },
+  "homepage": "https://github.com/raj-al-ghul/tab-freezer#readme",
+  "devDependencies": {
+    "typescript": "^4.4.4"
+  }
+}
