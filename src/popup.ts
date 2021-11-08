@@ -142,30 +142,30 @@
   render();
 })();
 
-const tabGroupsGet = async (tabId: number) =>
-  await new Promise<chrome.tabGroups.TabGroup>((resolve) => {
+const tabGroupsGet = (tabId: number) =>
+  new Promise<chrome.tabGroups.TabGroup>((resolve) => {
     chrome.tabGroups.get(tabId, (v) => resolve(v));
   });
 
-const getAllWindows = async () =>
-  await new Promise<chrome.windows.Window[]>((resolve) => {
+const getAllWindows = () =>
+  new Promise<chrome.windows.Window[]>((resolve) => {
     chrome.windows.getAll({ populate: true }, (windows) => {
       resolve(windows);
     });
   });
 
-const getConfig = (): ConfigI[] =>
+const getSessions = (): SessionI[] =>
   JSON.parse(localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS")) ?? [];
 
-const updateConfig = (config: ConfigI) => {
+const saveSession = (session: SessionI) => {
   localStorage.setItem(
     "TAB_FREEZER__SAVED_SESSIONS",
-    JSON.stringify([...getConfig(), config])
+    JSON.stringify([...getSessions(), session])
   );
 };
 
-const saveConfig = (config: ConfigI[]) => {
-  localStorage.setItem("TAB_FREEZER__SAVED_SESSIONS", JSON.stringify(config));
+const saveSessions = (sessions: SessionI[]) => {
+  localStorage.setItem("TAB_FREEZER__SAVED_SESSIONS", JSON.stringify(sessions));
 };
 
 const createButton = (text: string, cb: () => void) => {
@@ -181,12 +181,12 @@ const createButton = (text: string, cb: () => void) => {
 (function () {
   const renderSaveSession = async () => {
     const windows = await getAllWindows();
-    const CONFIG: ConfigI = { timestamp: Date.now(), windows: [] };
+    const CONFIG: SessionI = { timestamp: Date.now(), windows: [] };
 
     for (let WINDOWS_I = 0; WINDOWS_I < windows.length; WINDOWS_I += 1) {
       const w = windows[WINDOWS_I];
 
-      const WINDOW_CONFIG: WindowConfigI = {
+      const WINDOW_CONFIG: SessionWindowI = {
         tabGroups: {},
         pinnedTabIndices: [],
         tabs: [],
@@ -218,7 +218,7 @@ const createButton = (text: string, cb: () => void) => {
     saveBtn.textContent = `Save Session (${CONFIG.windows.length} windows)`;
     saveBtn.onclick = () => {
       CONFIG.timestamp = Date.now();
-      updateConfig(CONFIG);
+      saveSession(CONFIG);
       renderSessions();
     };
 
@@ -229,7 +229,7 @@ const createButton = (text: string, cb: () => void) => {
 
   renderSaveSession();
 
-  const openWindows = (windows: WindowConfigI[]) => {
+  const openWindows = (windows: SessionWindowI[]) => {
     for (let WINDOWS_I = 0; WINDOWS_I < windows.length; WINDOWS_I += 1) {
       const windowConfig = windows[WINDOWS_I];
 
@@ -262,7 +262,7 @@ const createButton = (text: string, cb: () => void) => {
   };
 
   const renderSessions = async () => {
-    const sessions = getConfig();
+    const sessions = getSessions();
 
     const sessionDiv = document.createElement("DIV");
     sessions.forEach((sesh) => {
@@ -286,7 +286,7 @@ const createButton = (text: string, cb: () => void) => {
       seshDiv.appendChild(
         createButton("Delete", () => {
           const newS = sessions.filter((s) => s !== sesh);
-          saveConfig(newS);
+          saveSessions(newS);
           renderSessions();
         })
       );

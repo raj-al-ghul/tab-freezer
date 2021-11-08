@@ -1,4 +1,4 @@
-interface WindowConfigI {
+interface SessionWindowI {
   tabGroups: {
     [key in number]: {
       tabIdxs: number[];
@@ -8,7 +8,7 @@ interface WindowConfigI {
   tabs: chrome.tabs.Tab[];
 }
 
-interface ConfigI {
+interface SessionI {
   timestamp: number;
-  windows: WindowConfigI[];
+  windows: SessionWindowI[];
 }
