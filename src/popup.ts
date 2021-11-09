@@ -248,9 +248,6 @@ const createButton = (text: string, cb: () => void) => {
 
       const createdWindow = await chrome.windows.create({});
       const tempStarterTab = createdWindow.tabs?.[0];
-      // const tabs = await batchOpenTabs(createdWindow.id, windowConfig.tabs);
-      // await chrome.tabs.remove(tempStarterTab.id);
-      // await Promise.all(tabs.map((t) => chrome.tabs.discard(t.id)));
       await batchOpenAndDiscardTabs(createdWindow.id, windowConfig.tabs);
       await chrome.tabs.remove(tempStarterTab.id);
 
@@ -328,34 +325,6 @@ const createButton = (text: string, cb: () => void) => {
 
   renderSessions();
 })();
-
-const batchOpenTabs = async (windowId: number, tabs: chrome.tabs.Tab[]) => {
-  const createdTabs: Promise<chrome.tabs.Tab>[] = [];
-
-  for (let i = 0; i < tabs.length; i += 1) {
-    const tab = tabs[i];
-
-    const t = createTab(windowId, tab);
-    createdTabs.push(t);
-
-    // if (batch && i >= 10 && i % 10 === 0) {
-    //   console.log(i, i % 10);
-    //   // await sleep(2);
-    //   const v = await Promise.all(createdTabs);
-    //   const n = await discardTabs(v);
-    //   console.log(
-    //     "old",
-    //     v.map((_) => _.id)
-    //   );
-    //   console.log(
-    //     "new",
-    //     n.map((_) => _.id)
-    //   );
-    // }
-  }
-
-  return Promise.all(createdTabs);
-};
 
 const batchOpenAndDiscardTabs = async (
   windowId: number,
