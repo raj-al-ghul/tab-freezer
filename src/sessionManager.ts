@@ -117,18 +117,20 @@ const createTab = async (windowId: number, tab: chrome.tabs.Tab) => {
   });
 };
 
+const TAB_FREEZER__SAVED_SESSIONS = "TAB_FREEZER__SAVED_SESSIONS";
+
 export const getSessions = (): SessionI[] =>
-  JSON.parse(localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS")) ?? [];
+  JSON.parse(localStorage.getItem(TAB_FREEZER__SAVED_SESSIONS)) ?? [];
 
 const saveSession = (session: SessionI) => {
   localStorage.setItem(
-    "TAB_FREEZER__SAVED_SESSIONS",
+    TAB_FREEZER__SAVED_SESSIONS,
     JSON.stringify([...getSessions(), session])
   );
 };
 
 export const saveSessions = (sessions: SessionI[]) => {
-  localStorage.setItem("TAB_FREEZER__SAVED_SESSIONS", JSON.stringify(sessions));
+  localStorage.setItem(TAB_FREEZER__SAVED_SESSIONS, JSON.stringify(sessions));
 };
 
 export const createSessionConfig = async () => {
@@ -174,7 +176,7 @@ export const createSessionConfig = async () => {
   };
 
   const saveToClipboard = () => {
-    const txt = localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS");
+    const txt = localStorage.getItem(TAB_FREEZER__SAVED_SESSIONS);
     navigator.clipboard.writeText(txt).then(
       () => alert("Copied to clipboard"),
       () => alert("Export failed")
