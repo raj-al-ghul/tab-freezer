@@ -202,12 +202,12 @@ const createButton = (text: string, cb: () => void) => {
 
         if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
           if (WINDOW_CONFIG.tabGroups[tab.groupId]) {
-            WINDOW_CONFIG.tabGroups[tab.groupId].tabIdxs.push(TAB_i);
+            WINDOW_CONFIG.tabGroups[tab.groupId].tabIndices.push(TAB_i);
           } else {
             const tabGroupInfo = await tabGroupsGet(tab.groupId);
             WINDOW_CONFIG.tabGroups[tab.groupId] = {
               ...tabGroupInfo,
-              tabIdxs: [TAB_i],
+              tabIndices: [TAB_i],
             };
           }
         }
@@ -225,40 +225,68 @@ const createButton = (text: string, cb: () => void) => {
     const appRoot = document.getElementById("save");
     appRoot.innerHTML = "";
     appRoot.appendChild(saveBtn);
+    appRoot.appendChild(
+      createButton("Export", () => {
+        const txt = localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS");
+        navigator.clipboard.writeText(txt).then(
+          () => {
+            alert("Copied to clipboard");
+          },
+          () => {
+            alert("Export failed");
+          }
+        );
+      })
+    );
   };
 
   renderSaveSession();
 
-  const openWindows = (windows: SessionWindowI[]) => {
+  const openWindows = async (windows: SessionWindowI[]) => {
     for (let WINDOWS_I = 0; WINDOWS_I < windows.length; WINDOWS_I += 1) {
       const windowConfig = windows[WINDOWS_I];
 
-      const urls = windowConfig.tabs.map((t) => t.url);
-      chrome.windows.create({ url: urls }, (createdWindow) => {
-        Object.values(windowConfig.tabGroups).forEach((tabGroup) => {
-          const tabIds = tabGroup.tabIdxs.map(
-            (idx) => createdWindow.tabs[idx].id
-          );
+      const createdWindow = await chrome.windows.create({});
+      const tempStarterTab = createdWindow.tabs?.[0];
+      // const tabs = await batchOpenTabs(createdWindow.id, windowConfig.tabs);
+      // await chrome.tabs.remove(tempStarterTab.id);
+      // await Promise.all(tabs.map((t) => chrome.tabs.discard(t.id)));
+      await batchOpenAndDiscardTabs(createdWindow.id, windowConfig.tabs);
+      await chrome.tabs.remove(tempStarterTab.id);
 
-          chrome.tabs.group(
-            { tabIds, createProperties: { windowId: createdWindow.id } },
-            (tabGroupId) => {
-              chrome.tabGroups.update(tabGroupId, {
-                color: tabGroup.color,
-                collapsed: tabGroup.collapsed,
-                title: tabGroup.title,
-              });
-            }
-          );
+      const currTabs = (
+        await chrome.windows.get(createdWindow.id, {
+          populate: true,
+        })
+      ).tabs;
+
+      const groupMps = Object.values(windowConfig.tabGroups).map(
+        ({ tabIndices, ...props }) => ({
+          props: props,
+          tabIds: tabIndices.map((idx) => currTabs[idx].id),
+        })
+      );
+
+      if (groupMps.length > 0) await sleep(1);
+
+      for (let i = 0; i < groupMps.length; i += 1) {
+        const { tabIds, props } = groupMps[i];
+
+        const groupId = await chrome.tabs.group({
+          tabIds,
+          createProperties: { windowId: createdWindow.id },
         });
+        await chrome.tabGroups.update(groupId, {
+          color: props.color,
+          collapsed: props.collapsed,
+          title: props.title,
+        });
+      }
 
-        windowConfig.pinnedTabIndices
-          .map((idx) => createdWindow.tabs[idx].id)
-          .forEach((pinnedTabId) => {
-            chrome.tabs.update(pinnedTabId, { pinned: true });
-          });
-      });
+      // await sleep(1);
     }
+
+    console.log(chrome.tabs.onUpdated.hasListeners());
   };
 
   const renderSessions = async () => {
@@ -300,3 +328,123 @@ const createButton = (text: string, cb: () => void) => {
 
   renderSessions();
 })();
+
+const batchOpenTabs = async (windowId: number, tabs: chrome.tabs.Tab[]) => {
+  const createdTabs: Promise<chrome.tabs.Tab>[] = [];
+
+  for (let i = 0; i < tabs.length; i += 1) {
+    const tab = tabs[i];
+
+    const t = createTab(windowId, tab);
+    createdTabs.push(t);
+
+    // if (batch && i >= 10 && i % 10 === 0) {
+    //   console.log(i, i % 10);
+    //   // await sleep(2);
+    //   const v = await Promise.all(createdTabs);
+    //   const n = await discardTabs(v);
+    //   console.log(
+    //     "old",
+    //     v.map((_) => _.id)
+    //   );
+    //   console.log(
+    //     "new",
+    //     n.map((_) => _.id)
+    //   );
+    // }
+  }
+
+  return Promise.all(createdTabs);
+};
+
+const batchOpenAndDiscardTabs = async (
+  windowId: number,
+  tabsToCreate: chrome.tabs.Tab[],
+  batch: number = 10
+): Promise<chrome.tabs.Tab[]> => {
+  const tabsToCreateChunks = chunkArray(tabsToCreate, batch);
+  const createdTabs: chrome.tabs.Tab[] = [];
+
+  for (let X_i = 0; X_i < tabsToCreateChunks.length; X_i += 1) {
+    const chunkedCreatedTabs: Promise<chrome.tabs.Tab>[] = [];
+
+    const tabs = tabsToCreateChunks[X_i];
+    for (let i = 0; i < tabs.length; i += 1) {
+      chunkedCreatedTabs.push(createTab(windowId, tabs[i]));
+    }
+
+    const v = await Promise.all(chunkedCreatedTabs);
+    // const n = await discardTabs(v);
+
+    const n = await Promise.all(
+      v.map((tabToDiscard) => {
+        //@ts-ignore
+        if (tabToDiscard.__TIMEDOUT) {
+          return Promise.resolve(tabToDiscard);
+        } else {
+          return chrome.tabs.discard(tabToDiscard.id);
+        }
+      })
+    );
+
+    createdTabs.push(...n);
+  }
+
+  return createdTabs;
+};
+
+/**
+ * Create tab and return a promise for when it will start or finish loading
+ */
+const createTab = async (windowId: number, tab: chrome.tabs.Tab) => {
+  let createdTab = await chrome.tabs.create({
+    url: tab.url,
+    pinned: tab.pinned,
+    windowId,
+  });
+
+  let timeoutId: number;
+
+  return new Promise<chrome.tabs.Tab>(async (resolve) => {
+    const listener = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+      // console.log("CHANGE", tabId, changeInfo.status);
+      if (
+        createdTab?.id === tabId &&
+        ["complete", "loading"].includes(changeInfo.status)
+      ) {
+        chrome.tabs.onUpdated.removeListener(listener);
+        window.clearTimeout(timeoutId);
+        resolve(createdTab);
+      }
+    };
+
+    // TODO label these so they are not discarded!
+    timeoutId = window.setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      //@ts-ignore
+      createdTab.__TIMEDOUT = true;
+      resolve(createdTab);
+      console.log("Failed to load Tab", tab);
+    }, 4000);
+
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+};
+
+const discardTabs = (tabs: chrome.tabs.Tab[]) =>
+  Promise.all(tabs.map((t) => chrome.tabs.discard(t.id)));
+
+const sleep = async (seconds: number) =>
+  await new Promise((r) => setTimeout(r, seconds * 1000));
+
+function chunkArray<T>(origArr: Readonly<T[]>, chunkSize: number): T[][] {
+  if (chunkSize === origArr.length) return [[...origArr]];
+
+  const chunkedArrs: T[][] = [];
+
+  for (let i = 0; i < origArr.length; i += chunkSize) {
+    chunkedArrs.push(origArr.slice(i, i + chunkSize));
+  }
+
+  return chunkedArrs;
+}

@@ -1,7 +1,7 @@
 interface SessionWindowI {
   tabGroups: {
     [key in number]: {
-      tabIdxs: number[];
+      tabIndices: number[];
     } & chrome.tabGroups.TabGroup;
   };
   pinnedTabIndices: number[];
