@@ -147,8 +147,9 @@ import {
   render();
 })();
 
-const createButton = (text: string, cb: () => void) => {
+const createButton = (text: string, cb: () => void, className?: string) => {
   const btn = document.createElement("BUTTON");
+  if (className) btn.className = className;
   btn.textContent = text;
   btn.onclick = () => {
     cb();
@@ -203,11 +204,15 @@ const createButton = (text: string, cb: () => void) => {
       );
 
       seshDiv.appendChild(
-        createButton("Delete", () => {
-          const newS = sessions.filter((s) => s !== sesh);
-          saveSessions(newS);
-          renderSessions();
-        })
+        createButton(
+          "Delete",
+          () => {
+            const newS = sessions.filter((s) => s !== sesh);
+            saveSessions(newS);
+            renderSessions();
+          },
+          "danger"
+        )
       );
       sessionDiv.appendChild(seshDiv);
     });
