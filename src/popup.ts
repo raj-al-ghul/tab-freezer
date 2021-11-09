@@ -26,122 +26,119 @@ import {
   let cachedFocusedWindowId: number = undefined;
 
   const render = async () => {
-    chrome.windows.getAll({ populate: true }, (windows) => {
-      const outerDiv = document.createElement("div");
+    const windows = await chrome.windows.getAll({ populate: true });
+    const outerDiv = document.createElement("div");
 
-      const warning = document.createElement("div");
-      warning.className = "warning";
-      warning.innerText = "Do NOT freeze tabs with unsaved work!";
+    const warning = document.createElement("div");
+    warning.className = "warning";
+    warning.innerText = "Do NOT freeze tabs with unsaved work!";
 
-      const discardAllWindows = document.createElement("button");
-      discardAllWindows.textContent = "Freeze all Tabs in all Windows";
-      discardAllWindows.onclick = () => {
-        windows.forEach((w) =>
-          w.tabs.forEach((t) => chrome.tabs.discard(t.id))
+    const discardAllWindows = document.createElement("button");
+    discardAllWindows.textContent = "Freeze all Tabs in all Windows";
+    discardAllWindows.onclick = () => {
+      windows.forEach((w) => w.tabs.forEach((t) => chrome.tabs.discard(t.id)));
+
+      // render() not needed; discarding all tabs closes extension UI
+    };
+
+    outerDiv.appendChild(warning);
+    outerDiv.appendChild(discardAllWindows);
+
+    windows.forEach(async (w) => {
+      /**
+       * The Summary of the div
+       * e.g.
+       *
+       * Window 13 <Discard All>
+       */
+      const summary = document.createElement("summary");
+
+      const discardedTabs = w.tabs.filter((t) => t.discarded).length;
+
+      let titleDiv;
+      const titleText = `Window (${discardedTabs}/${w.tabs.length} frozen tabs)`;
+      if (w.focused || cachedFocusedWindowId === w.id) {
+        titleDiv = document.createElement("MARK");
+        titleDiv.innerText = titleText;
+        cachedFocusedWindowId = w.id;
+      } else {
+        titleDiv = document.createTextNode(titleText);
+      }
+
+      const discardAllButton = document.createElement("BUTTON");
+      discardAllButton.textContent = "Freeze all tabs";
+      discardAllButton.onclick = () => {
+        w.tabs.forEach((t) =>
+          chrome.tabs.discard(t.id, (tabOrUndefined) => {})
         );
 
-        // render() not needed; discarding all tabs closes extension UI
+        // if current window, discarding current tab will also close extension UI
+        if (!w.focused) render();
       };
 
-      outerDiv.appendChild(warning);
-      outerDiv.appendChild(discardAllWindows);
+      /**
+       * TODO see performance summary of all windows/tabs
+       * https://developer.chrome.com/docs/extensions/reference/processes/
+       * enable
+       */
+      // if (chrome.processes) {
+      //   const windowTabProcesses = [];
+      //   for (let i = 0; i < w.tabs.length; i += 1) {
+      //     const t = w.tabs[i];
 
-      windows.forEach(async (w) => {
-        /**
-         * The Summary of the div
-         * e.g.
-         *
-         * Window 13 <Discard All>
-         */
-        const summary = document.createElement("summary");
+      //     await new Promise((resolve) => {
+      //       chrome.processes.getProcessIdForTab(t.id, (processId) => {
+      //         windowTabProcesses.push(processId);
+      //         resolve();
+      //       });
+      //     });
+      //   }
 
-        const discardedTabs = w.tabs.filter((t) => t.discarded).length;
+      //   await new Promise((resolve) => {
+      //     chrome.processes.getProcessInfo(
+      //       windowTabProcesses,
+      //       true,
+      //       (processes) => {
+      //         console.log(processes);
+      //         resolve();
+      //       }
+      //     );
+      //   });
+      // }
 
-        let titleDiv;
-        const titleText = `Window (${discardedTabs}/${w.tabs.length} frozen tabs)`;
-        if (w.focused || cachedFocusedWindowId === w.id) {
-          titleDiv = document.createElement("MARK");
-          titleDiv.innerText = titleText;
-          cachedFocusedWindowId = w.id;
-        } else {
-          titleDiv = document.createTextNode(titleText);
-        }
+      const firstTabTitle = document.createElement("div");
+      firstTabTitle.textContent = w.tabs[0].title;
+      firstTabTitle.className = "first-tab-title";
 
-        const discardAllButton = document.createElement("BUTTON");
-        discardAllButton.textContent = "Freeze all tabs";
-        discardAllButton.onclick = () => {
-          w.tabs.forEach((t) =>
-            chrome.tabs.discard(t.id, (tabOrUndefined) => {})
-          );
+      summary.appendChild(titleDiv);
+      summary.appendChild(discardAllButton);
+      summary.appendChild(firstTabTitle);
 
-          // if current window, discarding current tab will also close extension UI
-          if (!w.focused) render();
-        };
+      /**
+       * Tabs in each window
+       * e.g.
+       *    * Design the user interface - Chrome Developers
+       *    * HTML 5 <details> Tag
+       */
 
-        /**
-         * TODO see performance summary of all windows/tabs
-         * https://developer.chrome.com/docs/extensions/reference/processes/
-         * enable
-         */
-        // if (chrome.processes) {
-        //   const windowTabProcesses = [];
-        //   for (let i = 0; i < w.tabs.length; i += 1) {
-        //     const t = w.tabs[i];
-
-        //     await new Promise((resolve) => {
-        //       chrome.processes.getProcessIdForTab(t.id, (processId) => {
-        //         windowTabProcesses.push(processId);
-        //         resolve();
-        //       });
-        //     });
-        //   }
-
-        //   await new Promise((resolve) => {
-        //     chrome.processes.getProcessInfo(
-        //       windowTabProcesses,
-        //       true,
-        //       (processes) => {
-        //         console.log(processes);
-        //         resolve();
-        //       }
-        //     );
-        //   });
-        // }
-
-        const firstTabTitle = document.createElement("div");
-        firstTabTitle.textContent = w.tabs[0].title;
-        firstTabTitle.className = "first-tab-title";
-
-        summary.appendChild(titleDiv);
-        summary.appendChild(discardAllButton);
-        summary.appendChild(firstTabTitle);
-
-        /**
-         * Tabs in each window
-         * e.g.
-         *    * Design the user interface - Chrome Developers
-         *    * HTML 5 <details> Tag
-         */
-
-        const tabList = document.createElement("ul");
-        w.tabs.forEach((t) => {
-          const tabSpan = document.createElement("li");
-          tabSpan.textContent = `${t.title}`;
-          tabList.appendChild(tabSpan);
-        });
-
-        // done with window
-        const details = document.createElement("details");
-        details.appendChild(summary);
-        details.appendChild(tabList);
-        outerDiv.appendChild(details);
+      const tabList = document.createElement("ul");
+      w.tabs.forEach((t) => {
+        const tabSpan = document.createElement("li");
+        tabSpan.textContent = `${t.title}`;
+        tabList.appendChild(tabSpan);
       });
 
-      const appRoot = document.getElementById("app");
-      // we call render() to update UI, so clear root content on every render
-      appRoot.innerHTML = "";
-      appRoot.appendChild(outerDiv);
+      // done with window
+      const details = document.createElement("details");
+      details.appendChild(summary);
+      details.appendChild(tabList);
+      outerDiv.appendChild(details);
     });
+
+    const appRoot = document.getElementById("app");
+    // we call render() to update UI, so clear root content on every render
+    appRoot.innerHTML = "";
+    appRoot.appendChild(outerDiv);
   };
 
   render();
