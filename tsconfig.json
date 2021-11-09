@@ -2,7 +2,7 @@
   "include": ["src/**/*"],
   "compilerOptions": {
     "target": "es2020",
-    "module": "commonjs",
+    "module": "ES6",
     "outDir": "dist",
     "allowJs": true,
     "noImplicitAny": true
