@@ -7,7 +7,12 @@
  *   So, if an action closes the UI, on next icon clock, render() will be called
  */
 
-import { openWindows } from "./sessionManager.js";
+import {
+  createSessionConfig,
+  getSessions,
+  openWindows,
+  saveSessions,
+} from "./sessionManager.js";
 
 /**
  * https://developer.chrome.com/docs/extensions/reference/processes/#method-getProcessIdForTab
@@ -142,32 +147,6 @@ import { openWindows } from "./sessionManager.js";
   render();
 })();
 
-const tabGroupsGet = (tabId: number) =>
-  new Promise<chrome.tabGroups.TabGroup>((resolve) => {
-    chrome.tabGroups.get(tabId, (v) => resolve(v));
-  });
-
-const getAllWindows = () =>
-  new Promise<chrome.windows.Window[]>((resolve) => {
-    chrome.windows.getAll({ populate: true }, (windows) => {
-      resolve(windows);
-    });
-  });
-
-const getSessions = (): SessionI[] =>
-  JSON.parse(localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS")) ?? [];
-
-const saveSession = (session: SessionI) => {
-  localStorage.setItem(
-    "TAB_FREEZER__SAVED_SESSIONS",
-    JSON.stringify([...getSessions(), session])
-  );
-};
-
-const saveSessions = (sessions: SessionI[]) => {
-  localStorage.setItem("TAB_FREEZER__SAVED_SESSIONS", JSON.stringify(sessions));
-};
-
 const createButton = (text: string, cb: () => void) => {
   const btn = document.createElement("BUTTON");
   btn.textContent = text;
@@ -180,45 +159,12 @@ const createButton = (text: string, cb: () => void) => {
 
 (function () {
   const renderSaveSession = async () => {
-    const windows = await getAllWindows();
-    const CONFIG: SessionI = { timestamp: Date.now(), windows: [] };
-
-    for (let WINDOWS_I = 0; WINDOWS_I < windows.length; WINDOWS_I += 1) {
-      const w = windows[WINDOWS_I];
-
-      const WINDOW_CONFIG: SessionWindowI = {
-        tabGroups: {},
-        pinnedTabIndices: [],
-        tabs: [],
-      };
-      CONFIG.windows.push(WINDOW_CONFIG);
-
-      for (let TAB_i = 0; TAB_i < w.tabs.length; TAB_i += 1) {
-        const tab = w.tabs[TAB_i];
-
-        WINDOW_CONFIG.tabs.push(tab);
-
-        if (tab.pinned) WINDOW_CONFIG.pinnedTabIndices.push(TAB_i);
-
-        if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-          if (WINDOW_CONFIG.tabGroups[tab.groupId]) {
-            WINDOW_CONFIG.tabGroups[tab.groupId].tabIndices.push(TAB_i);
-          } else {
-            const tabGroupInfo = await tabGroupsGet(tab.groupId);
-            WINDOW_CONFIG.tabGroups[tab.groupId] = {
-              ...tabGroupInfo,
-              tabIndices: [TAB_i],
-            };
-          }
-        }
-      }
-    }
+    const { title, save, saveToClipboard } = await createSessionConfig();
 
     const saveBtn = document.createElement("BUTTON");
-    saveBtn.textContent = `Save Session (${CONFIG.windows.length} windows)`;
+    saveBtn.textContent = title;
     saveBtn.onclick = () => {
-      CONFIG.timestamp = Date.now();
-      saveSession(CONFIG);
+      save();
       renderSessions();
     };
 
@@ -227,15 +173,7 @@ const createButton = (text: string, cb: () => void) => {
     appRoot.appendChild(saveBtn);
     appRoot.appendChild(
       createButton("Export", () => {
-        const txt = localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS");
-        navigator.clipboard.writeText(txt).then(
-          () => {
-            alert("Copied to clipboard");
-          },
-          () => {
-            alert("Export failed");
-          }
-        );
+        saveToClipboard();
       })
     );
   };

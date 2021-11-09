@@ -116,3 +116,70 @@ const createTab = async (windowId: number, tab: chrome.tabs.Tab) => {
     chrome.tabs.onUpdated.addListener(listener);
   });
 };
+
+export const getSessions = (): SessionI[] =>
+  JSON.parse(localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS")) ?? [];
+
+const saveSession = (session: SessionI) => {
+  localStorage.setItem(
+    "TAB_FREEZER__SAVED_SESSIONS",
+    JSON.stringify([...getSessions(), session])
+  );
+};
+
+export const saveSessions = (sessions: SessionI[]) => {
+  localStorage.setItem("TAB_FREEZER__SAVED_SESSIONS", JSON.stringify(sessions));
+};
+
+export const createSessionConfig = async () => {
+  const windows = await chrome.windows.getAll({ populate: true });
+  const CONFIG: SessionI = { timestamp: Date.now(), windows: [] };
+
+  for (let WINDOWS_I = 0; WINDOWS_I < windows.length; WINDOWS_I += 1) {
+    const w = windows[WINDOWS_I];
+
+    const WINDOW_CONFIG: SessionWindowI = {
+      tabGroups: {},
+      pinnedTabIndices: [],
+      tabs: [],
+    };
+    CONFIG.windows.push(WINDOW_CONFIG);
+
+    for (let TAB_i = 0; TAB_i < w.tabs.length; TAB_i += 1) {
+      const tab = w.tabs[TAB_i];
+
+      WINDOW_CONFIG.tabs.push(tab);
+
+      if (tab.pinned) WINDOW_CONFIG.pinnedTabIndices.push(TAB_i);
+
+      if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+        if (WINDOW_CONFIG.tabGroups[tab.groupId]) {
+          WINDOW_CONFIG.tabGroups[tab.groupId].tabIndices.push(TAB_i);
+        } else {
+          const tabGroupInfo = await chrome.tabGroups.get(tab.groupId);
+          WINDOW_CONFIG.tabGroups[tab.groupId] = {
+            ...tabGroupInfo,
+            tabIndices: [TAB_i],
+          };
+        }
+      }
+    }
+  }
+
+  const title = `Save Session (${CONFIG.windows.length} windows)`;
+
+  const save = () => {
+    CONFIG.timestamp = Date.now();
+    saveSession(CONFIG);
+  };
+
+  const saveToClipboard = () => {
+    const txt = localStorage.getItem("TAB_FREEZER__SAVED_SESSIONS");
+    navigator.clipboard.writeText(txt).then(
+      () => alert("Copied to clipboard"),
+      () => alert("Export failed")
+    );
+  };
+
+  return { title, save, saveToClipboard };
+};
