@@ -41,13 +41,13 @@ import {
       });
     });
 
-    const discardAllWindows = document.createElement("button");
-    discardAllWindows.textContent = "Freeze all Tabs in all Windows";
-    discardAllWindows.onclick = () => {
-      windows.forEach((w) => w.tabs.forEach((t) => chrome.tabs.discard(t.id)));
+    const discardAllWindows = button("Freeze all Tabs in all Windows", () => {
+      windows.forEach(
+        (w) => w.tabs.forEach((t) => chrome.tabs.discard(t.id))
 
-      // render() not needed; discarding all tabs closes extension UI
-    };
+        // render() not needed; discarding all tabs closes extension UI
+      );
+    });
 
     outerDiv.appendChild(warning);
     outerDiv.append(discardCurrentTab);
@@ -74,16 +74,14 @@ import {
         titleDiv = document.createTextNode(titleText);
       }
 
-      const discardAllButton = document.createElement("BUTTON");
-      discardAllButton.textContent = "Freeze all tabs";
-      discardAllButton.onclick = () => {
+      const discardAllButton = button("Freeze all tabs", () => {
         w.tabs.forEach((t) =>
           chrome.tabs.discard(t.id, (tabOrUndefined) => {})
         );
 
         // if current window, discarding current tab will also close extension UI
         if (!w.focused) render();
-      };
+      });
 
       /**
        * TODO see performance summary of all windows/tabs
@@ -168,12 +166,10 @@ const button = (text: string, cb: () => void, className?: string) => {
   const renderSaveSession = async () => {
     const { title, save, saveToClipboard } = await createSessionConfig();
 
-    const saveBtn = document.createElement("BUTTON");
-    saveBtn.textContent = title;
-    saveBtn.onclick = () => {
+    const saveBtn = button(title, () => {
       save();
       renderSessions();
-    };
+    });
 
     const appRoot = document.getElementById("save");
     appRoot.innerHTML = "";
