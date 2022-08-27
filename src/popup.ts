@@ -33,7 +33,7 @@ import {
     warning.className = "warning";
     warning.innerText = "Do NOT freeze tabs with unsaved work!";
 
-    const discardCurrentTab = createButton("Freeze Current Tab", () => {
+    const discardCurrentTab = button("Freeze Current Tab", () => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) chrome.tabs.discard(tabs[0].id);
 
@@ -153,7 +153,7 @@ import {
   render();
 })();
 
-const createButton = (text: string, cb: () => void, className?: string) => {
+const button = (text: string, cb: () => void, className?: string) => {
   const btn = document.createElement("BUTTON");
   if (className) btn.className = className;
   btn.textContent = text;
@@ -179,7 +179,7 @@ const createButton = (text: string, cb: () => void, className?: string) => {
     appRoot.innerHTML = "";
     appRoot.appendChild(saveBtn);
     appRoot.appendChild(
-      createButton("Export", () => {
+      button("Export", () => {
         saveToClipboard();
       })
     );
@@ -204,13 +204,13 @@ const createButton = (text: string, cb: () => void, className?: string) => {
       ).toLocaleTimeString()}`;
 
       seshDiv.appendChild(
-        createButton("Open", () => {
+        button("Open", () => {
           openWindows(sesh.windows);
         })
       );
 
       seshDiv.appendChild(
-        createButton(
+        button(
           "Delete",
           () => {
             const newS = sessions.filter((s) => s !== sesh);
