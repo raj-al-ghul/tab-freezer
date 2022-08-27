@@ -33,6 +33,14 @@ import {
     warning.className = "warning";
     warning.innerText = "Do NOT freeze tabs with unsaved work!";
 
+    const discardCurrentTab = createButton("Freeze Current Tab", () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) chrome.tabs.discard(tabs[0].id);
+
+        // render() not needed; discarding all tabs closes extension UI
+      });
+    });
+
     const discardAllWindows = document.createElement("button");
     discardAllWindows.textContent = "Freeze all Tabs in all Windows";
     discardAllWindows.onclick = () => {
@@ -42,6 +50,7 @@ import {
     };
 
     outerDiv.appendChild(warning);
+    outerDiv.append(discardCurrentTab);
     outerDiv.appendChild(discardAllWindows);
 
     windows.forEach(async (w) => {
